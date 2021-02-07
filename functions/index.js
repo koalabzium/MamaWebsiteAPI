@@ -26,20 +26,21 @@ app.get("/", async (req, res) => {
 
 app.post("/books", verifyToken, (req, res) => {
   const book = {
+    id: generateId(),
     title: req.body.title,
     author: req.body.author,
     description: req.body.description,
     link: req.body.link,
     image: req.body.image,
     location: req.body.location,
-    avalible: req.body.quantity,
+    available: req.body.quantity,
     borrowing: [],
     quantity: req.body.quantity,
     category: req.body.category,
   };
 
   db.collection("books")
-    .doc(req.body.title)
+    .doc(book.id)
     .set(book)
     .then(
       res.json({
@@ -51,16 +52,43 @@ app.post("/books", verifyToken, (req, res) => {
   });
 });
 
+const PAGE_SIZE = 10;
+
 app.get("/books", async (req, res) => {
-  const books = db.collection("books");
-  const result = await books.get();
-  const result_list = result.docs.map((x) => x.data());
-  res.send(result_list);
+  const { page = 1, search, categoryId } = req.query;
+
+  let booksQuery = db.collection("books");
+
+  const pageInt = parseInt(page);
+
+  if (categoryId) {
+    booksQuery = booksQuery.where("category", "==", categoryId);
+  }
+
+  const { docs } = await booksQuery.get();
+
+  const books = docs
+    .map((x) => x.data())
+    .filter(({ title, author }) =>
+      search
+        ? title.toLowerCase().includes(search.toLowerCase()) ||
+          author.toLowerCase().includes(search.toLowerCase())
+        : true
+    )
+    .sort((a, b) => (a.title > b.title ? 1 : b.title > a.title ? -1 : 0));
+
+  const booksPerPage = books.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  res.send({
+    results: booksPerPage,
+    page: pageInt,
+    totalCount: books.length,
+  });
 });
 
-app.get("/books/:title", (req, res) => {
-  let cityRef = db.collection("books").doc(req.params.title);
-  cityRef
+app.get("/books/:id", (req, res) => {
+  let bookRef = db.collection("books").doc(req.params.id);
+  bookRef
     .get()
     .then((doc) => {
       if (!doc.exists) {
@@ -75,13 +103,24 @@ app.get("/books/:title", (req, res) => {
     });
 });
 
-app.delete("/books/:title", verifyToken, (req, res) => {
+app.get("/books/:id/borrowings", async (req, res) => {
+  const borrowings = db.collection("borrowings");
+
+  const booksBorrowings = await borrowings
+    .where("bookId", "==", req.params.id)
+    .get();
+
+  const results = booksBorrowings.docs.map((x) => x.data());
+  res.send(results);
+});
+
+app.delete("/books/:id", verifyToken, (req, res) => {
   db.collection("books")
-    .doc(req.params.title)
+    .doc(req.params.id)
     .delete()
     .then(
       res.json({
-        message: "Deleted " + req.params.title,
+        message: "Deleted " + req.params.id,
       })
     );
   res.json({
@@ -89,9 +128,9 @@ app.delete("/books/:title", verifyToken, (req, res) => {
   });
 });
 
-app.put("/books/:title", verifyToken, (req, res) => {
+app.put("/books/:id", verifyToken, (req, res) => {
   db.collection("books")
-    .doc(req.params.title)
+    .doc(req.params.id)
     .set(req.body, { merge: true })
     .then(
       res.json({
@@ -99,7 +138,45 @@ app.put("/books/:title", verifyToken, (req, res) => {
       })
     );
   res.json({
-    message: req.params.title,
+    message: req.params.id,
+  });
+});
+
+app.post("/borrowings", verifyToken, (req, res) => {
+  const borrowing = {
+    id: generateId(),
+    bookId: req.body.bookId,
+    readerId: req.body.readerId,
+    readerName: req.body.readerName,
+    date: req.body.date,
+    active: true,
+    quantity: req.body.quantity,
+  };
+
+  db.collection("borrowings")
+    .doc(borrowing.id)
+    .set(borrowing)
+    .then(
+      res.json({
+        message: borrowing,
+      })
+    );
+  res.json({
+    message: null,
+  });
+});
+
+app.patch("/borrowings/:id", verifyToken, (req, res) => {
+  db.collection("borrowings")
+    .doc(req.params.id)
+    .set(req.body, { merge: true })
+    .then(
+      res.json({
+        message: "Updated",
+      })
+    );
+  res.json({
+    message: req.params.id,
   });
 });
 
@@ -173,6 +250,94 @@ app.put("/categories/:id", verifyToken, (req, res) => {
       res.json({
         message: "Updated a category ",
         category,
+      })
+    );
+  res.json({
+    message: req.params.id,
+  });
+});
+
+app.get("/readers", async (req, res) => {
+  const readers = db.collection("readers");
+  const result = await readers.get();
+  const result_list = result.docs.map((x) => x.data());
+  res.send(result_list);
+});
+
+app.get("/readers/:id", (req, res) => {
+  let readerRef = db.collection("readers").doc(req.params.id);
+  readerRef
+    .get()
+    .then((doc) => {
+      if (!doc.exists) {
+        console.log("No such document!");
+      } else {
+        console.log("Document data:", doc.data());
+        res.send(doc.data());
+      }
+    })
+    .catch((err) => {
+      console.log("Error getting document", err);
+    });
+});
+
+app.get("/readers/:id/borrowings", async (req, res) => {
+  const borrowings = db.collection("borrowings");
+
+  const readersBorrowings = await borrowings
+    .where("readerId", "==", req.params.id)
+    .get();
+
+  const results = readersBorrowings.docs.map((x) => x.data());
+  res.send(results);
+});
+
+app.post("/readers", verifyToken, (req, res) => {
+  const reader = {
+    id: generateId(),
+    name: req.body.name,
+  };
+
+  db.collection("readers")
+    .doc(reader.id)
+    .set(reader)
+    .then(
+      res.json({
+        message: reader,
+      })
+    );
+  res.json({
+    message: null,
+  });
+});
+
+app.delete("/readers/:id", verifyToken, (req, res) => {
+  db.collection("readers")
+    .doc(req.params.id)
+    .delete()
+    .then(
+      res.json({
+        message: "Deleted reader " + req.params.id,
+      })
+    );
+  res.json({
+    message: null,
+  });
+});
+
+app.put("/readers/:id", verifyToken, (req, res) => {
+  const reader = {
+    id: req.params.id,
+    name: req.body.name,
+  };
+
+  db.collection("readers")
+    .doc(req.params.id)
+    .set(reader)
+    .then(
+      res.json({
+        message: "Updated a reader ",
+        reader,
       })
     );
   res.json({
