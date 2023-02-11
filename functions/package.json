@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "firebase-functions-test": "^0.1.6",
-    "nodemon": "^2.0.7"
+    "nodemon": "^2.0.20"
   },
   "private": true
 }
