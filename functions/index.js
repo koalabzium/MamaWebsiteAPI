@@ -52,3 +52,5 @@ app.post("/login", async (req, res) => {
 
 app.listen(port, () => console.log(`Example app listening on port ${port}!`));
 exports.app = functions.https.onRequest(app);
+
+exports.appEurope = functions.region('europe-west1').https.onRequest(app);
