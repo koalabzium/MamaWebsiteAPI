@@ -1,15 +1,18 @@
 const express = require("express");
 const router = express.Router();
-const admin = require("firebase-admin");
+const db = require("../utils/db");
 const { verifyToken } = require("../utils/AuthUtils");
 const { generateId } = require("../utils/IdUtils");
-let db = admin.firestore();
 
 router.get("", async (req, res) => {
-  const readers = db.collection("readers");
-  const result = await readers.get();
-  const result_list = result.docs.map((x) => x.data());
-  res.send(result_list);
+  try {
+    const readers = db.collection("readers");
+    const result = await readers.get();
+    const result_list = result.docs.map((x) => x.data());
+    res.send(result_list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.get("/:id", (req, res) => {
@@ -34,14 +37,18 @@ router.get("/:id", (req, res) => {
 });
 
 router.get("/:id/borrowings", async (req, res) => {
-  const borrowings = db.collection("borrowings");
+  try {
+    const borrowings = db.collection("borrowings");
 
-  const readersBorrowings = await borrowings
-    .where("readerId", "==", req.params.id)
-    .get();
+    const readersBorrowings = await borrowings
+      .where("readerId", "==", req.params.id)
+      .get();
 
-  const results = readersBorrowings.docs.map((x) => x.data());
-  res.send(results);
+    const results = readersBorrowings.docs.map((x) => x.data());
+    res.send(results);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.post("", verifyToken, (req, res) => {

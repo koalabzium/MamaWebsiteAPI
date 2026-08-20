@@ -1,10 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const admin = require("firebase-admin");
+const db = require("../utils/db");
 const { generateId } = require("../utils/IdUtils");
 const { verifyToken } = require("../utils/AuthUtils");
-
-let db = admin.firestore();
 
 router.post("", verifyToken, (req, res) => {
   const {
@@ -69,48 +67,52 @@ router.get("", async (req, res) => {
     order = "asc",
   } = req.query;
 
-  let booksQuery = db.collection("books");
+  try {
+    let booksQuery = db.collection("books");
 
-  const pageInt = parseInt(page);
+    const pageInt = parseInt(page);
 
-  if (categoryId) {
-    booksQuery = booksQuery.where("category", "==", categoryId);
-  }
+    if (categoryId) {
+      booksQuery = booksQuery.where("category", "==", categoryId);
+    }
 
-  if (placeId) {
-    booksQuery = booksQuery.where("place", "==", placeId);
-  }
+    if (placeId) {
+      booksQuery = booksQuery.where("place", "==", placeId);
+    }
 
-  const { docs } = await booksQuery.get();
+    const { docs } = await booksQuery.get();
 
-  const bookSorter = (field, order) => (a, b) =>
-    ((a, b) => order * (a > b ? 1 : a < b ? -1 : 0))(
-      (a[field] || "").toLowerCase(),
-      (b[field] || "").toLowerCase()
+    const bookSorter = (field, order) => (a, b) =>
+      ((a, b) => order * (a > b ? 1 : a < b ? -1 : 0))(
+        (a[field] || "").toLowerCase(),
+        (b[field] || "").toLowerCase()
+      );
+
+    const books = docs
+      .map((x) => x.data())
+      .filter(({ title, author }) =>
+        search
+          ? title.toLowerCase().includes(search.toLowerCase()) ||
+            author.toLowerCase().includes(search.toLowerCase())
+          : true
+      );
+
+    console.log(`Sorting by: ${sortBy} in order: ${order}`);
+
+    const sortedBooks = books.sort(bookSorter(sortBy, order === "desc" ? -1 : 1));
+    const booksPerPage = sortedBooks.slice(
+      (page - 1) * PAGE_SIZE,
+      page * PAGE_SIZE
     );
 
-  const books = docs
-    .map((x) => x.data())
-    .filter(({ title, author }) =>
-      search
-        ? title.toLowerCase().includes(search.toLowerCase()) ||
-          author.toLowerCase().includes(search.toLowerCase())
-        : true
-    );
-
-  console.log(`Sorting by: ${sortBy} in order: ${order}`);
-
-  const sortedBooks = books.sort(bookSorter(sortBy, order === "desc" ? -1 : 1));
-  const booksPerPage = sortedBooks.slice(
-    (page - 1) * PAGE_SIZE,
-    page * PAGE_SIZE
-  );
-
-  res.send({
-    results: booksPerPage,
-    page: pageInt,
-    totalCount: sortedBooks.length,
-  });
+    res.send({
+      results: booksPerPage,
+      page: pageInt,
+      totalCount: sortedBooks.length,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.get("/:id", (req, res) => {
@@ -131,19 +133,24 @@ router.get("/:id", (req, res) => {
     })
     .catch((err) => {
       console.log("Error getting document", err);
+      res.status(500).json({ error: err.message });
     });
 });
 
 router.get("/:id/borrowings", async (req, res) => {
-  const borrowings = db.collection("borrowings");
+  try {
+    const borrowings = db.collection("borrowings");
 
-  const booksBorrowings = await borrowings
-    .where("bookId", "==", req.params.id)
-    .where("active", "==", true)
-    .get();
+    const booksBorrowings = await borrowings
+      .where("bookId", "==", req.params.id)
+      .where("active", "==", true)
+      .get();
 
-  const results = booksBorrowings.docs.map((x) => x.data());
-  res.send(results);
+    const results = booksBorrowings.docs.map((x) => x.data());
+    res.send(results);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.delete("/:id", verifyToken, (req, res) => {
