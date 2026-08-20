@@ -9,7 +9,7 @@ const getSecret = () => {
 
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];
-  if (typeof authHeader == "undefined") res.sendStatus(403);
+  if (typeof authHeader == "undefined") return res.sendStatus(403);
   const token = authHeader.split(" ")[1];
   jwt.verify(token, getSecret(), (err, authData) => {
     if (err) {

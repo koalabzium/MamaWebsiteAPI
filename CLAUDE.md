@@ -13,8 +13,17 @@ Run from `functions/`:
 - `npm run shell` — interactive Firebase functions shell
 - `npm run deploy` — `firebase deploy --only functions`
 - `npm run logs` — tail deployed function logs
+- `npm test` — runs the Jest suite (`npx jest path/to/one.test.js` for a single file); fully offline, no emulator or live Firestore needed — see Testing below.
 
-There is no automated test suite. Local dev requires the Firebase CLI (`firebase-tools`) installed and authenticated, plus the service-account JSON (`functions/mamusiaLibrary-227be22cdd3a.json`) and `functions/.env` (`JWT_SECRET`) present — both are already in the tree but are secrets, not something to regenerate.
+Local dev (emulator/deploy, not testing) requires the Firebase CLI (`firebase-tools`) installed and authenticated, plus the service-account JSON (`functions/mamusiaLibrary-227be22cdd3a.json`) and `functions/.env` (`JWT_SECRET`) present — both are already in the tree but are secrets, not something to regenerate.
+
+## Testing
+
+Tests live under `functions/test/`, one file per service plus `test/utils/AuthUtils.test.js`, and mount each router standalone with `supertest` rather than booting the whole app. Firestore is never actually hit: `functions/__mocks__/firebase-admin.js` is a Jest manual mock whose `firestore()` returns the in-memory fake at `functions/test/helpers/fakeFirestore.js` (supports `collection/doc/set/get/delete/update` and `.where(field, "==", value)` chains — the only operator this codebase uses); `functions/__mocks__/firebase-functions.js` similarly stubs `functions.config()` with a fixed test JWT secret. Both are wired in globally via `functions/test/setup.js` (Jest's `setupFilesAfterEnv`), which also resets the fake DB and restores any spies after every test.
+
+Categories/Places/Readers are near-identical `{id, name}` CRUD routers, so their tests share one parameterized suite, `functions/test/services/simpleCrud.shared.js` (`runCrudSuite({...})`), rather than tripling the same test bodies — each service's own test file just calls it with its router/collection name.
+
+A "sends a single response" assertion (`jest.spyOn(express.response, "json")`, asserting exactly one call) guards against the double-`res.json()` class of bug this codebase has had before: calling `res.json()` twice in one handler doesn't reliably surface as a different HTTP status/body to the client once headers are sent, so `.expect(200)` alone won't catch a regression — the call-count spy is the actual signal.
 
 ## Architecture
 
