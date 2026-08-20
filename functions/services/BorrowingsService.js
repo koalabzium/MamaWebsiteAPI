@@ -24,7 +24,7 @@ router.post("", verifyToken, async (req, res) => {
             .get();
 
         if (!bookRef.exists) {
-            return res.status(400).json({message: `Book with this ID does not exist: ${borrowing.bookId}`});
+            return res.status(400).json({message: `Book with this ID does not exist: ${bookId}`});
         }
 
         const book = bookRef.data();
