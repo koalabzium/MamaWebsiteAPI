@@ -19,6 +19,9 @@ router.get("/:id", (req, res) => {
     .then((doc) => {
       if (!doc.exists) {
         console.log("No such document!");
+        res.status(404).json({
+          message: `Could not find reader with ID: ${req.params.id}`,
+        });
       } else {
         console.log("Document data:", doc.data());
         res.send(doc.data());
@@ -26,6 +29,7 @@ router.get("/:id", (req, res) => {
     })
     .catch((err) => {
       console.log("Error getting document", err);
+      res.status(500).json({ error: err.message });
     });
 });
 
@@ -49,28 +53,32 @@ router.post("", verifyToken, (req, res) => {
   db.collection("readers")
     .doc(reader.id)
     .set(reader)
-    .then(
+    .then(() =>
       res.json({
         message: reader,
       })
-    );
-  res.json({
-    message: null,
-  });
+    )
+    .catch((err) => {
+      res.status(500).json({
+        error: err.message,
+      });
+    });
 });
 
 router.delete("/:id", verifyToken, (req, res) => {
   db.collection("readers")
     .doc(req.params.id)
     .delete()
-    .then(
+    .then(() =>
       res.json({
         message: "Deleted reader " + req.params.id,
       })
-    );
-  res.json({
-    message: null,
-  });
+    )
+    .catch((err) => {
+      res.status(500).json({
+        error: err.message,
+      });
+    });
 });
 
 router.put("/:id", verifyToken, (req, res) => {
@@ -82,15 +90,17 @@ router.put("/:id", verifyToken, (req, res) => {
   db.collection("readers")
     .doc(req.params.id)
     .set(reader)
-    .then(
+    .then(() =>
       res.json({
         message: "Updated a reader ",
         reader,
       })
-    );
-  res.json({
-    message: req.params.id,
-  });
+    )
+    .catch((err) => {
+      res.status(500).json({
+        error: err.message,
+      });
+    });
 });
 
 module.exports = router;

@@ -150,14 +150,16 @@ router.delete("/:id", verifyToken, (req, res) => {
   db.collection("books")
     .doc(req.params.id)
     .delete()
-    .then(
+    .then(() =>
       res.json({
         message: "Deleted " + req.params.id,
       })
-    );
-  res.json({
-    message: null,
-  });
+    )
+    .catch((err) => {
+      res.status(500).json({
+        error: err.message,
+      });
+    });
 });
 
 router.put("/:id", verifyToken, (req, res) => {

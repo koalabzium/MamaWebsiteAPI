@@ -34,14 +34,16 @@ router.delete("/:id", verifyToken, (req, res) => {
   db.collection("places")
     .doc(req.params.id)
     .delete()
-    .then(
+    .then(() =>
       res.json({
         message: "Deleted place " + req.params.id,
       })
-    );
-  res.json({
-    message: null,
-  });
+    )
+    .catch((err) => {
+      res.status(500).json({
+        error: err.message,
+      });
+    });
 });
 
 router.put("/:id", verifyToken, (req, res) => {
@@ -53,15 +55,17 @@ router.put("/:id", verifyToken, (req, res) => {
   db.collection("places")
     .doc(req.params.id)
     .set(place)
-    .then(
+    .then(() =>
       res.json({
         message: "Updated a place ",
         place,
       })
-    );
-  res.json({
-    message: req.params.id,
-  });
+    )
+    .catch((err) => {
+      res.status(500).json({
+        error: err.message,
+      });
+    });
 });
 
 module.exports = router;
