@@ -1,10 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const admin = require("firebase-admin");
+const db = require("../utils/db");
 const {generateId} = require('../utils/IdUtils');
 const {verifyToken} = require('../utils/AuthUtils');
-
-let db = admin.firestore();
 
 router.post("", verifyToken, async (req, res) => {
     try {

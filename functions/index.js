@@ -2,7 +2,6 @@ require("dotenv").config();
 const functions = require("firebase-functions");
 const express = require("express");
 const app = express();
-const port = 3300;
 app.use(express.json());
 const bcrypt = require("bcrypt");
 const admin = require("firebase-admin");
@@ -19,7 +18,7 @@ admin.initializeApp({
   databaseURL: "https://mamusialibrary.firebaseio.com",
 });
 
-let db = admin.firestore();
+const db = require("./utils/db");
 
 app.get("/", async (req, res) => {
   res.json({
@@ -50,7 +49,6 @@ app.post("/login", async (req, res) => {
   }
 });
 
-app.listen(port, () => console.log(`Example app listening on port ${port}!`));
 exports.app = functions.https.onRequest(app);
 
 exports.appEurope = functions.region('europe-west1').https.onRequest(app);

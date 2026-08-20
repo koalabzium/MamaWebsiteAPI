@@ -1,16 +1,18 @@
 const express = require("express");
 const router = express.Router();
-const admin = require("firebase-admin");
+const db = require("../utils/db");
 const { verifyToken } = require("../utils/AuthUtils");
 const { generateId } = require("../utils/IdUtils");
 
-let db = admin.firestore();
-
 router.get("", async (req, res) => {
-  const categories = db.collection("categories");
-  const result = await categories.get();
-  const result_list = result.docs.map((x) => x.data());
-  res.send(result_list);
+  try {
+    const categories = db.collection("categories");
+    const result = await categories.get();
+    const result_list = result.docs.map((x) => x.data());
+    res.send(result_list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.post("", verifyToken, (req, res) => {
