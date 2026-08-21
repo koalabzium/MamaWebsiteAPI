@@ -1,10 +1,10 @@
 require("dotenv").config();
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const express = require("express");
 const app = express();
 app.use(express.json());
 const bcrypt = require("bcrypt");
-const admin = require("firebase-admin");
+const { initializeApp, cert } = require("firebase-admin/app");
 const cors = require("cors");
 var serviceAccount = require("./mamusiaLibrary-227be22cdd3a.json");
 const morgan = require("morgan");
@@ -13,8 +13,8 @@ app.use(cors({ origin: true }));
 
 app.use(morgan("common"));
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+initializeApp({
+  credential: cert(serviceAccount),
   databaseURL: "https://mamusialibrary.firebaseio.com",
 });
 
@@ -39,7 +39,7 @@ app.post("/login", async (req, res) => {
   const users = db.collection("users");
   const result = await users.where("name", "==", userName).get();
   const result_password = result.docs.map((x) => x.data().password)[0];
-  if (bcrypt.compareSync(password, result_password)) {
+  if (result_password && bcrypt.compareSync(password, result_password)) {
     const signedToken = signToken({ userName });
     res.json({
       signedToken,
@@ -48,7 +48,5 @@ app.post("/login", async (req, res) => {
     res.sendStatus(403);
   }
 });
-
-exports.app = functions.https.onRequest(app);
 
 exports.appEurope = functions.region('europe-west1').https.onRequest(app);
