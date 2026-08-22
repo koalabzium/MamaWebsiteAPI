@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "mamusialibrary"
+    "default": "mamusialibrary",
+    "staging": "mamusialibrary-staging"
   }
 }

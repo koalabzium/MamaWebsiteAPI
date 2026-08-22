@@ -4,19 +4,22 @@ const express = require("express");
 const app = express();
 app.use(express.json());
 const bcrypt = require("bcrypt");
-const { initializeApp, cert } = require("firebase-admin/app");
+const { initializeApp } = require("firebase-admin/app");
 const cors = require("cors");
-var serviceAccount = require("./mamusiaLibrary-227be22cdd3a.json");
 const morgan = require("morgan");
 const { signToken } = require("./utils/AuthUtils");
 app.use(cors({ origin: true }));
 
 app.use(morgan("common"));
 
-initializeApp({
-  credential: cert(serviceAccount),
-  databaseURL: "https://mamusialibrary.firebaseio.com",
-});
+// No explicit credential/project here on purpose: Cloud Functions injects
+// Application Default Credentials + project context automatically at deploy
+// time, so the same source deploys correctly to whichever project it's
+// targeted at (prod `mamusialibrary` or `staging` mamusialibrary-staging)
+// with no per-project branching. For local emulator/shell use, set
+// GOOGLE_APPLICATION_CREDENTIALS in functions/.env.local (gitignored,
+// emulator-only, never deployed) instead.
+initializeApp();
 
 const db = require("./utils/db");
 
