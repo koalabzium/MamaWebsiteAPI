@@ -1,9 +1,14 @@
 const jwt = require("jsonwebtoken");
-const functions = require("firebase-functions");
 
+// functions.config() is permanently gone (the Runtime Configurator API it
+// depended on was shut down), so the secret comes from the environment
+// instead: functions/.env's JWT_SECRET, loaded locally via dotenv
+// (index.js) and auto-injected by Firebase's deploy pipeline in production.
 const getSecret = () => {
-  const config = functions.config();
-  const { secret } = config.mamalibrary;
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("Missing JWT_SECRET environment variable");
+  }
   return secret;
 };
 
