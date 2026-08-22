@@ -12,12 +12,15 @@
  *   GOOGLE_APPLICATION_CREDENTIALS=/path/to/staging-key.json \
  *     node functions/scripts/seedStagingData.js
  *
- * Optional: SEED_ADMIN_PASSWORD=<password> to override the default admin
- * login password created below.
+ * Optional: SEED_ADMIN_PASSWORD=<password> to set the admin login password
+ * explicitly. If omitted, a random one is generated and printed once at the
+ * end of the run — nothing about the admin password is ever hardcoded here,
+ * so it can't end up committed to source control.
  */
 
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 
 const EXPECTED_PROJECT_ID = "mamusialibrary-staging";
@@ -118,7 +121,8 @@ const READERS = [
   "Anonimowy Czytelnik #1",
 ].map((name) => ({ id: generateId(), name }));
 
-const adminPassword = process.env.SEED_ADMIN_PASSWORD || "staging123";
+const adminPassword =
+  process.env.SEED_ADMIN_PASSWORD || crypto.randomBytes(9).toString("base64url");
 const ADMIN_USER = {
   name: "admin",
   password: bcrypt.hashSync(adminPassword, 10),
