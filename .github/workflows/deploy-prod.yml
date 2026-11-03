@@ -1,0 +1,48 @@
+name: Deploy to Production
+
+# Pushing to the `production` branch deploys Cloud Functions to the prod
+# Firebase project (`mamusialibrary`). The job runs in the `production`
+# GitHub Environment, so if that Environment has required reviewers set,
+# the deploy waits for manual approval before touching prod.
+
+on:
+  push:
+    branches: [production]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: functions
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: functions/package-lock.json
+
+      - run: npm ci
+
+      - run: npm test
+
+      # Firebase loads `.env.<projectId>` at deploy time and injects it into
+      # the function's environment (AuthUtils reads process.env.JWT_SECRET).
+      - name: Write production env file
+        run: echo "JWT_SECRET=${{ secrets.PROD_JWT_SECRET }}" > .env.mamusialibrary
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_PROD_SERVICE_ACCOUNT }}
+
+      - name: Deploy to Firebase (production)
+        run: npx firebase-tools deploy --only functions --project mamusialibrary --non-interactive
