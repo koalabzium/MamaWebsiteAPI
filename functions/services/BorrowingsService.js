@@ -4,6 +4,34 @@ const db = require("../utils/db");
 const {generateId} = require('../utils/IdUtils');
 const {verifyToken} = require('../utils/AuthUtils');
 
+// Admin-only list of borrowings (they carry reader names, so unlike most GET
+// routes this one requires a token). ?active=true limits it to borrowings
+// that haven't been returned yet. Each borrowing is enriched with its book's
+// current place (bookPlace) so the admin screen can filter by location —
+// borrowings don't store it themselves.
+router.get("", verifyToken, async (req, res) => {
+    try {
+        let query = db.collection("borrowings");
+        if (req.query.active === "true") {
+            query = query.where("active", "==", true);
+        }
+        const snapshot = await query.get();
+        const borrowings = snapshot.docs.map((d) => d.data());
+
+        const bookIds = [...new Set(borrowings.map((b) => b.bookId).filter(Boolean))];
+        const bookDocs = bookIds.length
+            ? await db.getAll(...bookIds.map((id) => db.collection("books").doc(id)))
+            : [];
+        const placeByBook = new Map(
+            bookDocs.filter((d) => d.exists).map((d) => [d.id, d.data().place || null])
+        );
+
+        res.json(borrowings.map((b) => ({...b, bookPlace: placeByBook.get(b.bookId) || null})));
+    } catch (e) {
+        res.status(500).json({error: e.message});
+    }
+});
+
 router.post("", verifyToken, async (req, res) => {
     try {
         const {
@@ -26,6 +54,10 @@ router.post("", verifyToken, async (req, res) => {
         }
 
         const book = bookRef.data();
+
+        if (parseInt(book.available) < parseInt(quantity)) {
+            return res.status(400).json({message: "Brak dostępnych egzemplarzy tej książki."});
+        }
 
         const borrowing = {
             id: generateId(),
@@ -80,7 +112,13 @@ router.post("/:id/cancel", verifyToken, async (req, res) => {
             return res.status(400).json({message: `Borrowing with this id does not exist: ${borrowingId}`});
         }
 
-        const {quantity, bookId} = borrowingDocument.data();
+        const {quantity, bookId, active} = borrowingDocument.data();
+
+        // Without this, cancelling twice (double click, two tabs) would add
+        // the copies back to the book's availability a second time.
+        if (!active) {
+            return res.status(400).json({message: "To wypożyczenie zostało już zakończone."});
+        }
 
         const result = await db.collection("borrowings")
             .doc(borrowingId)
