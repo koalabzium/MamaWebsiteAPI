@@ -1,8 +1,20 @@
 name: Deploy to Staging
 
+# Every merge to master deploys to staging automatically. To preview a
+# feature branch on staging before merging, run this workflow manually
+# (Actions → Deploy to Staging → Run workflow, or
+# `gh workflow run deploy-staging.yml --ref <branch>`); the next push to
+# master will put staging back on master.
 on:
   push:
-    branches: [staging]
+    branches: [master]
+  workflow_dispatch:
+
+# Only one staging deploy at a time; a newer one cancels an in-flight one
+# rather than letting an older build finish last and win.
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: true
 
 jobs:
   test-and-deploy:
