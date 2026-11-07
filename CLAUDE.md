@@ -6,6 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is the backend for **Biblioteka Zosi** / "MamaLibrary" — a library/book-lending management app (books, categories, places/shelves, readers, borrowings, admin login). It's a Firebase Cloud Functions app (Node/Express) and is normally checked out as a sibling of its frontend counterpart, `MamaWebsiteFront` (`koalabzium/MamaWebsiteFront`, a separate git repo/remote) — the two are developed together but versioned independently.
 
+## Development workflow
+
+Keep it simple and use as few branches as possible:
+- **One branch per working session** (per repo), even when the session covers several unrelated changes. Don't create a separate branch per feature or fix; keep adding commits to the session's branch.
+- Branch from an up-to-date `master`. If the session already has a branch in that repo, use it rather than starting another.
+- One PR per session branch into `master`. Merging to `master` auto-deploys to staging; production is a separate `master` → `production` PR.
+- Delete the branch once it's merged.
+
 ## Commands
 
 Run from `functions/`:
