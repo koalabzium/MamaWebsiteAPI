@@ -117,10 +117,25 @@ describe("BooksService", () => {
 
     test("reports totalCount and page for the full result set", async () => {
       const res = await request(app).get("/books").query({ page: 1 });
-      // PAGE_SIZE is 10, so all 3 seeded books fit on page 1.
+      // The default page size (10) fits all 3 seeded books on page 1.
       expect(res.body.results).toHaveLength(3);
       expect(res.body.totalCount).toBe(3);
       expect(res.body.page).toBe(1);
+      expect(res.body.pageSize).toBe(10);
+    });
+
+    test("pages by ?pageSize and echoes it back", async () => {
+      const res = await request(app).get("/books").query({ page: 2, pageSize: 2 });
+      expect(res.body.results.map((b) => b.title)).toEqual(["Silmarillion"]);
+      expect(res.body.totalCount).toBe(3);
+      expect(res.body.pageSize).toBe(2);
+    });
+
+    test("falls back to the default for an invalid pageSize and caps large ones", async () => {
+      const bad = await request(app).get("/books").query({ pageSize: "abc" });
+      expect(bad.body.pageSize).toBe(10);
+      const huge = await request(app).get("/books").query({ pageSize: 5000 });
+      expect(huge.body.pageSize).toBe(100);
     });
   });
 
