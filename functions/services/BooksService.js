@@ -55,7 +55,19 @@ router.post("", verifyToken, (req, res) => {
     });
 });
 
-const PAGE_SIZE = 10;
+// Default page size, overridable per request with ?pageSize= (clamped).
+// The response echoes the size actually used so clients don't have to
+// hard-code it. The default stays at the historical 10 so a client that
+// doesn't send pageSize (an older frontend build) still gets the page size
+// it assumes; the current frontend asks for more explicitly.
+const DEFAULT_PAGE_SIZE = 10;
+const MAX_PAGE_SIZE = 100;
+
+const parsePageSize = (raw) => {
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 1) return DEFAULT_PAGE_SIZE;
+  return Math.min(n, MAX_PAGE_SIZE);
+};
 
 router.get("", async (req, res) => {
   const {
@@ -66,6 +78,7 @@ router.get("", async (req, res) => {
     sortBy = "title",
     order = "asc",
   } = req.query;
+  const pageSize = parsePageSize(req.query.pageSize);
 
   try {
     let booksQuery = db.collection("books");
@@ -101,13 +114,14 @@ router.get("", async (req, res) => {
 
     const sortedBooks = books.sort(bookSorter(sortBy, order === "desc" ? -1 : 1));
     const booksPerPage = sortedBooks.slice(
-      (page - 1) * PAGE_SIZE,
-      page * PAGE_SIZE
+      (page - 1) * pageSize,
+      page * pageSize
     );
 
     res.send({
       results: booksPerPage,
       page: pageInt,
+      pageSize,
       totalCount: sortedBooks.length,
     });
   } catch (err) {
